@@ -82,7 +82,7 @@ EOF
 export FLASH_KERNEL_SKIP=1 
 
 if [ ! -e /usr/local/bin/k3s ]; then
-    wget https://github.com/yoink00/k3s/releases/download/v0.2.0-iface-fix/k3s-armhf -O /usr/local/bin/k3s
+    wget https://github.com/rancher/k3s/releases/download/v0.4.0/k3s-armhf -O /usr/local/bin/k3s
     ln -s /usr/local/bin/k3s /usr/local/bin/k3s-server
     ln -s /usr/local/bin/k3s /usr/local/bin/k3s-agent
 fi
