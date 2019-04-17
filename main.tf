@@ -121,10 +121,3 @@ output "k3s-url" {
   value = "${scaleway_server.k3s_server.public_ip}"
 }
 
-output "user_data_server" {
-  value = "${data.template_file.userdata_server.rendered}"
-}
-
-output "user_data_agent" {
-  value = "${data.template_file.userdata_agent.*.rendered}"
-}

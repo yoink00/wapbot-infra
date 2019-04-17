@@ -1,4 +1,10 @@
 secrets.tfvars
 terraform.tfstate
 .passphrase
+.init
+.terraform
+terraform.plan
+.deploy
+*.backup
+*.new
 
