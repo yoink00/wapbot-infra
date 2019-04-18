@@ -7,4 +7,4 @@ terraform.plan
 .deploy
 *.backup
 *.new
-
+id_rsa*

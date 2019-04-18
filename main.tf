@@ -46,13 +46,40 @@ resource "random_string" "cluster_secret" {
   special = false
 }
 
+resource "scaleway_ssh_key" "k3s_key" {
+  key = "${file("id_rsa_swdev.pub")}"
+}
+
+resource "scaleway_ip" "k3s_server" {}
+
 resource "scaleway_server" "k3s_server" {
   count               = "1"
   image               = "${data.scaleway_image.bionic.id}"
   type                = "${var.type}"
   name                = "${var.prefix}-k3sserver-${count.index}"
   security_group      = "${scaleway_security_group.k3s_cluster.id}"
-  dynamic_ip_required = true
+  dynamic_ip_required = false
+  public_ip           = "${scaleway_ip.k3s_server.ip}"
+
+  depends_on = [ "scaleway_ssh_key.k3s_key" ]
+
+  connection {
+    type        = "ssh"
+    user        = "root"
+    private_key = "${file("id_rsa_swdev")}"
+  }
+
+  provisioner "file" {
+    content = "${data.template_file.userdata_server.rendered}"
+    destination = "/root/initialise"
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "chmod +x /root/initialise",
+      "/root/initialise > /root/initialise.log"
+    ]
+  }
 }
 
 resource "scaleway_server" "k3s_agent" {
@@ -62,20 +89,40 @@ resource "scaleway_server" "k3s_agent" {
   name                = "${var.prefix}-k3sagent-${count.index}"
   security_group      = "${scaleway_security_group.k3s_cluster.id}"
   dynamic_ip_required = true
+
+  depends_on = [ "scaleway_ssh_key.k3s_key" ]
+
+  connection {
+    type        = "ssh"
+    user        = "root"
+    private_key = "${file("id_rsa_swdev")}"
+  }
+
+  provisioner "file" {
+    content = "${data.template_file.userdata_agent.*.rendered[count.index]}"
+    destination = "/root/initialise"
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "chmod +x /root/initialise",
+      "/root/initialise > /root/initialise.log"
+    ]
+  }
 }
 
-resource "scaleway_user_data" "k3s_server" {
-  server = "${scaleway_server.k3s_server.id}"
-  key = "cloud-init"
-  value = "${data.template_file.userdata_server.rendered}"
-}
-
-resource "scaleway_user_data" "k3s_agent" {
-  count = "${var.agent_count}"
-  server = "${scaleway_server.k3s_agent.*.id[count.index]}"
-  key = "cloud-init"
-  value = "${data.template_file.userdata_agent.*.rendered[count.index]}"
-}
+#resource "scaleway_user_data" "k3s_server" {
+#  server = "${scaleway_server.k3s_server.id}"
+#  key = "cloud-init"
+#  value = "${data.template_file.userdata_server.rendered}"
+#}
+#
+#resource "scaleway_user_data" "k3s_agent" {
+#  count = "${var.agent_count}"
+#  server = "${scaleway_server.k3s_agent.*.id[count.index]}"
+#  key = "cloud-init"
+#  value = "${data.template_file.userdata_agent.*.rendered[count.index]}"
+#}
 
 data "template_file" "userdata_server" {
   template = "${file("files/k3s_cloud_init.sh")}"
@@ -86,6 +133,7 @@ data "template_file" "userdata_server" {
     ZT_API_KEY            = "${var.zt_api_key}"
     ZT_NET                = "${var.zt_network}"
     IS_SERVER             = true
+    EXT_IP                = "${scaleway_ip.k3s_server.ip}"
   }
 }
 data "template_file" "userdata_agent" {
@@ -117,7 +165,7 @@ resource "scaleway_security_group_rule" "k3s_cluster_all_accept" {
   protocol  = "TCP"
 }
 
-output "k3s-url" {
+output "k3s_server_ip" {
   value = "${scaleway_server.k3s_server.public_ip}"
 }
 

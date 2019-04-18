@@ -6,10 +6,13 @@ secrets.tfvars: secrets.tfvars.gpg .passphrase
 backend_secrets.tfvars: backend_secrets.tfvars.gpg .passphrase
 	gpg2 --batch --yes -d --passphrase-file $(word 2,$^) -o $@ $<
 
-.terraform: backend_secrets.tfvars
-	terraform init -backend-config=$<
+id_rsa_swdev.pub:
+	ssh-keygen -f id_rsa_swdev -N ''
 
-terraform.plan: secrets.tfvars backend_secrets.tfvars .terraform *.tf
+.init: backend_secrets.tfvars
+	terraform init -backend-config=$< && touch .init
+
+terraform.plan: secrets.tfvars backend_secrets.tfvars .init *.tf id_rsa_swdev.pub
 	terraform plan -var-file=$(word 1,$^) -var-file=$(word 2,$^) -out=$@.new -detailed-exitcode;\
 	status=$$?;\
 	if [ $$status -eq 0 ]; then\
@@ -26,14 +29,18 @@ terraform.plan: secrets.tfvars backend_secrets.tfvars .terraform *.tf
 	fi
 	touch .deploy
 
-.PHONY: clean
+.PHONY: clean destroy
 
 clean:
 	rm -f secrets.tfvars
 	rm -f backend_secrets.tfvars
 	rm -rf .terraform
+	rm -f .init
 	rm -f terraform.plan
 	rm -f terraform.plan.new
 	rm -f .deploy
+	rm -f .init
 
+destroy: secrets.tfvars backend_secrets.tfvars .init *.tf
+	terraform destroy -var-file=$(word 1,$^) -var-file=$(word 2,$^)
 

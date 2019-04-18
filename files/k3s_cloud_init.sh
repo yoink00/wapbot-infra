@@ -14,6 +14,8 @@ ZT_SERVER_IP="${ZT_SERVER_IP}"
 ZT_API_KEY="${ZT_API_KEY}"
 ZT_NET="${ZT_NET}"
 
+EXT_IP="${EXT_IP}"
+
 if [ -z "$CLUSTER_SECRET" ]; then
     echo "ERROR: No cluster secret"
     exit 1
@@ -34,6 +36,10 @@ if [ -z "$ZT_SERVER_IP" -a $IS_SERVER != 1 ]; then
     echo "ERROR: No Server IP"
     exit 1
 fi
+if [ -z "$EXT_IP" -a $IS_SERVER != 1 ]; then
+    echo "ERROR: No Server IP"
+    exit 1
+fi
 
 SYSTEMD_SERVER=$(cat <<-'EOF'
 	[Unit]
@@ -44,7 +50,7 @@ SYSTEMD_SERVER=$(cat <<-'EOF'
 	[Service]
 	ExecStartPre=-/sbin/modprobe br_netfilter
 	ExecStartPre=-/sbin/modprobe overlay
-	ExecStart=/usr/local/bin/k3s server --disable-agent --flannel-iface __IFACE__ --cluster-secret __CLUSTER_SECRET__ --node-ip __IP_ADDR__ --no-deploy traefik --no-deploy=servicelb
+	ExecStart=/usr/local/bin/k3s server --disable-agent --flannel-iface __IFACE__ --cluster-secret __CLUSTER_SECRET__ --node-ip __IP_ADDR__ --no-deploy traefik --no-deploy=servicelb --bind-address __IP_ADDR__ --tls-san __EXT_IP__
 	KillMode=process
 	Delegate=yes
 	LimitNOFILE=infinity
@@ -129,6 +135,7 @@ if [[ $IS_SERVER -eq 1 ]]; then
     echo "INFO: Adding k3-server.service to systemd"
     SYSTEMD_SERVER="$(printf "$SYSTEMD_SERVER" | sed "s/__IFACE__/$IFACE/g")"
     SYSTEMD_SERVER="$(printf "$SYSTEMD_SERVER" | sed "s/__CLUSTER_SECRET__/$CLUSTER_SECRET/g")"
+    SYSTEMD_SERVER="$(printf "$SYSTEMD_SERVER" | sed "s/__EXT_IP__/$EXT_IP/g")"
     echo "$SYSTEMD_SERVER" > /etc/systemd/system/k3s-server.service
     echo "INFO: Enabling k3s-server"
     systemctl enable k3s-server
