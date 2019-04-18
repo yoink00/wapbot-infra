@@ -3,11 +3,14 @@ all: .deploy
 secrets.tfvars: secrets.tfvars.gpg .passphrase
 	gpg2 --batch --yes -d --passphrase-file $(word 2,$^) -o $@ $<
 
-.terraform: 
-	terraform init
+backend_secrets.tfvars: backend_secrets.tfvars.gpg .passphrase
+	gpg2 --batch --yes -d --passphrase-file $(word 2,$^) -o $@ $<
 
-terraform.plan: terraform.tfstate secrets.tfvars .terraform *.tf
-	terraform plan -var-file=$(word 2,$^) -out=$@.new -detailed-exitcode;\
+.terraform: backend_secrets.tfvars
+	terraform init -backend-config=$<
+
+terraform.plan: secrets.tfvars backend_secrets.tfvars .terraform *.tf
+	terraform plan -var-file=$(word 1,$^) -var-file=$(word 2,$^) -out=$@.new -detailed-exitcode;\
 	status=$$?;\
 	if [ $$status -eq 0 ]; then\
 	    rm $@.new;\
@@ -17,7 +20,7 @@ terraform.plan: terraform.tfstate secrets.tfvars .terraform *.tf
 	    exit $$status;\
 	fi
 
-.deploy: terraform.plan .passphrase .gitremote
+.deploy: terraform.plan .passphrase
 	if [ -e $< ]; then\
 	    terraform apply $(TF_FLAG) $<;\
 	fi
@@ -27,6 +30,7 @@ terraform.plan: terraform.tfstate secrets.tfvars .terraform *.tf
 
 clean:
 	rm -f secrets.tfvars
+	rm -f backend_secrets.tfvars
 	rm -rf .terraform
 	rm -f terraform.plan
 	rm -f terraform.plan.new

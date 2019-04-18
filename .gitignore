@@ -1,5 +1,5 @@
 secrets.tfvars
-terraform.tfstate
+backend_secrets.tfvars
 .passphrase
 .init
 .terraform
