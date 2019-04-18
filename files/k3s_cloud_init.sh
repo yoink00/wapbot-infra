@@ -1,20 +1,27 @@
-#!/bin/bash -x
+#!/bin/bash
 
-# These should be substitduted by Terrafrom template
+# These should be substituted by Terrafrom template
 CLUSTER_SECRET="${CLUSTER_SECRET}"
 IS_SERVER="${IS_SERVER}"
 ZT_STATIC_IP="${ZT_STATIC_IP}"
 
 %{ if IS_SERVER ~}
 ZT_SERVER_IP=""
+EXT_IP="${EXT_IP}"
 %{ else }
 ZT_SERVER_IP="${ZT_SERVER_IP}"
+EXT_IP=""
 %{ endif ~}
 
 ZT_API_KEY="${ZT_API_KEY}"
 ZT_NET="${ZT_NET}"
 
-EXT_IP="${EXT_IP}"
+%{ if IS_SERVER ~}
+echo "Provisioning server"
+%{ else }
+echo "Provisioning agent"
+%{ endif ~}
+
 
 if [ -z "$CLUSTER_SECRET" ]; then
     echo "ERROR: No cluster secret"
@@ -88,22 +95,27 @@ EOF
 export FLASH_KERNEL_SKIP=1 
 
 if [ ! -e /usr/local/bin/k3s ]; then
+    echo "Downloading k3s"
     wget https://github.com/rancher/k3s/releases/download/v0.4.0/k3s-armhf -O /usr/local/bin/k3s
     ln -s /usr/local/bin/k3s /usr/local/bin/k3s-server
     ln -s /usr/local/bin/k3s /usr/local/bin/k3s-agent
 fi
 
+echo "Make k3s executable"
 chmod +x /usr/local/bin/k3s
 
 if [ ! -e /usr/bin/gpg ]; then
+    echo "Instal gpg"
     apt install -y gpg
 fi
 
 if [ ! -e /usr/sbin/zerotier-cli ]; then
+    echo "Install ZeroTier"
     wget -qO - 'https://raw.githubusercontent.com/zerotier/download.zerotier.com/master/htdocs/contact%40zerotier.com.gpg' | gpg --import && \
     if z=$(wget -qO - 'https://install.zerotier.com/' | gpg); then echo "$z" | bash; fi
 fi
 
+echo "Joing ZeroTier network"
 ip a | grep '[0-9]*: zt' > /dev/null
 if [[ $? -ne 0 ]]; then
     zerotier-cli join $ZT_NET
@@ -120,6 +132,7 @@ if [[ $? -ne 0 ]]; then
     fi
 fi
 
+echo "Get ZT interface and IP"
 IFACE=$(ip a | grep '^[0-9]*: zt' | sed 's/^[0-9]*: \([^:]*\):.*$/\1/g')
 echo "Interface: $IFACE"
 IP_ADDR=$(ip a sho dev $IFACE | grep '^    inet ' | sed 's/^    inet \([^\/]*\)\/.*$/\1/g')
