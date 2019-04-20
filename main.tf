@@ -156,13 +156,24 @@ resource "scaleway_security_group" "k3s_cluster" {
   description = "allow all traffic"
 }
 
-resource "scaleway_security_group_rule" "k3s_cluster_all_accept" {
+resource "scaleway_security_group_rule" "k3s_cluster_zt_accept" {
+  security_group = "${scaleway_security_group.k3s_cluster.id}"
+
+  action    = "accept"
+  direction = "inbound"
+  ip_range  = "0.0.0.0/0"
+  protocol  = "UDP"
+  port      = "9993"
+}
+
+resource "scaleway_security_group_rule" "k3s_cluster_ssh_accept" {
   security_group = "${scaleway_security_group.k3s_cluster.id}"
 
   action    = "accept"
   direction = "inbound"
   ip_range  = "0.0.0.0/0"
   protocol  = "TCP"
+  port      = "22"
 }
 
 output "k3s_server_ip" {

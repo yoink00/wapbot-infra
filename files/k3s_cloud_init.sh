@@ -43,7 +43,7 @@ if [ -z "$ZT_SERVER_IP" -a $IS_SERVER != 1 ]; then
     echo "ERROR: No Server IP"
     exit 1
 fi
-if [ -z "$EXT_IP" -a $IS_SERVER != 1 ]; then
+if [ -z "$EXT_IP" -a $IS_SERVER == 1 ]; then
     echo "ERROR: No Server IP"
     exit 1
 fi
@@ -149,6 +149,7 @@ if [[ $IS_SERVER -eq 1 ]]; then
     SYSTEMD_SERVER="$(printf "$SYSTEMD_SERVER" | sed "s/__IFACE__/$IFACE/g")"
     SYSTEMD_SERVER="$(printf "$SYSTEMD_SERVER" | sed "s/__CLUSTER_SECRET__/$CLUSTER_SECRET/g")"
     SYSTEMD_SERVER="$(printf "$SYSTEMD_SERVER" | sed "s/__EXT_IP__/$EXT_IP/g")"
+    SYSTEMD_SERVER="$(printf "$SYSTEMD_SERVER" | sed "s/__IP_ADDR__/$IP_ADDR/g")"
     echo "$SYSTEMD_SERVER" > /etc/systemd/system/k3s-server.service
     echo "INFO: Enabling k3s-server"
     systemctl enable k3s-server
