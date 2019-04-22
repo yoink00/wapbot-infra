@@ -67,6 +67,7 @@ resource "scaleway_server" "k3s_server" {
     type        = "ssh"
     user        = "root"
     private_key = "${file("id_rsa_swdev")}"
+    host        = "${cidrhost(var.flannel_ip_range,1)}"
   }
 
   provisioner "file" {
@@ -96,6 +97,7 @@ resource "scaleway_server" "k3s_agent" {
     type        = "ssh"
     user        = "root"
     private_key = "${file("id_rsa_swdev")}"
+    host        = "${cidrhost(var.flannel_ip_range,count.index+2)}"
   }
 
   provisioner "file" {
@@ -153,7 +155,7 @@ data "template_file" "userdata_agent" {
 
 resource "scaleway_security_group" "k3s_cluster" {
   name        = "${var.prefix}-k3s_cluster"
-  description = "allow all traffic"
+  description = "k3s security group"
 }
 
 resource "scaleway_security_group_rule" "k3s_cluster_zt_accept" {
@@ -164,16 +166,6 @@ resource "scaleway_security_group_rule" "k3s_cluster_zt_accept" {
   ip_range  = "0.0.0.0/0"
   protocol  = "UDP"
   port      = "9993"
-}
-
-resource "scaleway_security_group_rule" "k3s_cluster_ssh_accept" {
-  security_group = "${scaleway_security_group.k3s_cluster.id}"
-
-  action    = "accept"
-  direction = "inbound"
-  ip_range  = "0.0.0.0/0"
-  protocol  = "TCP"
-  port      = "22"
 }
 
 output "k3s_server_ip" {
