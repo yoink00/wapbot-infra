@@ -67,7 +67,6 @@ resource "scaleway_server" "k3s_server" {
     type        = "ssh"
     user        = "root"
     private_key = "${file("id_rsa_swdev")}"
-    host        = "${cidrhost(var.flannel_ip_range,1)}"
   }
 
   provisioner "file" {
@@ -97,7 +96,6 @@ resource "scaleway_server" "k3s_agent" {
     type        = "ssh"
     user        = "root"
     private_key = "${file("id_rsa_swdev")}"
-    host        = "${cidrhost(var.flannel_ip_range,count.index+2)}"
   }
 
   provisioner "file" {
