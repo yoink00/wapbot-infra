@@ -111,19 +111,6 @@ resource "scaleway_server" "k3s_agent" {
   }
 }
 
-#resource "scaleway_user_data" "k3s_server" {
-#  server = "${scaleway_server.k3s_server.id}"
-#  key = "cloud-init"
-#  value = "${data.template_file.userdata_server.rendered}"
-#}
-#
-#resource "scaleway_user_data" "k3s_agent" {
-#  count = "${var.agent_count}"
-#  server = "${scaleway_server.k3s_agent.*.id[count.index]}"
-#  key = "cloud-init"
-#  value = "${data.template_file.userdata_agent.*.rendered[count.index]}"
-#}
-
 data "template_file" "userdata_server" {
   template = "${file("files/k3s_cloud_init.sh")}"
 
@@ -136,6 +123,7 @@ data "template_file" "userdata_server" {
     EXT_IP                = "${scaleway_ip.k3s_server.ip}"
   }
 }
+
 data "template_file" "userdata_agent" {
   template = "${file("files/k3s_cloud_init.sh")}"
 
@@ -152,8 +140,10 @@ data "template_file" "userdata_agent" {
 }
 
 resource "scaleway_security_group" "k3s_cluster" {
-  name        = "${var.prefix}-k3s_cluster"
-  description = "k3s security group"
+  name                    = "${var.prefix}-k3s_cluster"
+  description             = "k3s security group"
+  inbound_default_policy  = "drop"
+  outbound_default_policy = "accept"
 }
 
 resource "scaleway_security_group_rule" "k3s_cluster_zt_accept" {
@@ -165,6 +155,64 @@ resource "scaleway_security_group_rule" "k3s_cluster_zt_accept" {
   protocol  = "UDP"
   port      = "9993"
 }
+
+resource "scaleway_security_group_rule" "k3s_cluster_zt_accept_tcp" {
+  security_group = "${scaleway_security_group.k3s_cluster.id}"
+
+  action    = "accept"
+  direction = "inbound"
+  ip_range  = "0.0.0.0/0"
+  protocol  = "TCP"
+  port      = "9993"
+}
+
+resource "scaleway_security_group_rule" "k3s_cluster_ssh_accept" {
+  security_group = "${scaleway_security_group.k3s_cluster.id}"
+
+  action    = "accept"
+  direction = "inbound"
+  ip_range  = "0.0.0.0/0"
+  protocol  = "TCP"
+  port      = "22"
+}
+
+resource "scaleway_security_group_rule" "k3s_cluster_http_accept" {
+  security_group = "${scaleway_security_group.k3s_cluster.id}"
+
+  action    = "accept"
+  direction = "inbound"
+  ip_range  = "0.0.0.0/0"
+  protocol  = "TCP"
+  port      = "80"
+}
+
+resource "scaleway_security_group_rule" "k3s_cluster_all_tcp_drop" {
+  security_group = "${scaleway_security_group.k3s_cluster.id}"
+
+  action    = "drop"
+  direction = "inbound"
+  ip_range  = "0.0.0.0/0"
+  protocol  = "TCP"
+}
+
+resource "scaleway_security_group_rule" "k3s_cluster_all_udp_drop" {
+  security_group = "${scaleway_security_group.k3s_cluster.id}"
+
+  action    = "drop"
+  direction = "inbound"
+  ip_range  = "0.0.0.0/0"
+  protocol  = "UDP"
+}
+
+#resource "scaleway_security_group_rule" "k3s_cluster_http_accept" {
+#  security_group = "${scaleway_security_group.k3s_cluster.id}"
+#
+#  action    = "accept"
+#  direction = "inbound"
+#  ip_range  = "0.0.0.0/0"
+#  protocol  = "TCP"
+#  port      = "80"
+#}
 
 output "k3s_server_ip" {
   value = "${scaleway_server.k3s_server.public_ip}"
