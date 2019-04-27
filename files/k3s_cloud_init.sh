@@ -57,7 +57,7 @@ SYSTEMD_SERVER=$(cat <<-'EOF'
 	[Service]
 	ExecStartPre=-/sbin/modprobe br_netfilter
 	ExecStartPre=-/sbin/modprobe overlay
-	ExecStart=/usr/local/bin/k3s server --disable-agent --flannel-iface __IFACE__ --cluster-secret __CLUSTER_SECRET__ --node-ip __IP_ADDR__ --no-deploy traefik --no-deploy=servicelb --bind-address __IP_ADDR__ --tls-san __EXT_IP__
+	ExecStart=/usr/local/bin/k3s server --disable-agent --flannel-iface __IFACE__ --cluster-secret __CLUSTER_SECRET__ --node-ip __IP_ADDR__ --no-deploy traefik --bind-address __IP_ADDR__ --tls-san __EXT_IP__
 	KillMode=process
 	Delegate=yes
 	LimitNOFILE=infinity
@@ -94,9 +94,19 @@ EOF
 
 export FLASH_KERNEL_SKIP=1 
 
+function install_pkg {
+    check=$1
+    pkg=$2
+
+    if [ ! -e "$1" ]; then
+        echo "Install $2..."
+        apt install -y $pkg
+    fi
+}
+
 if [ ! -e /usr/local/bin/k3s ]; then
     echo "Downloading k3s"
-    wget https://github.com/rancher/k3s/releases/download/v0.4.0/k3s-armhf -O /usr/local/bin/k3s
+    wget https://github.com/rancher/k3s/releases/download/v0.5.0-rc1/k3s-armhf -O /usr/local/bin/k3s
     ln -s /usr/local/bin/k3s /usr/local/bin/k3s-server
     ln -s /usr/local/bin/k3s /usr/local/bin/k3s-agent
 fi
@@ -104,10 +114,9 @@ fi
 echo "Make k3s executable"
 chmod +x /usr/local/bin/k3s
 
-if [ ! -e /usr/bin/gpg ]; then
-    echo "Instal gpg"
-    apt install -y gpg
-fi
+install_pkg /usr/bin/gpg gpg
+install_pkg /usr/bin/mosh mosh
+install_pkg /bin/nc netcat-openbsd
 
 if [ ! -e /usr/sbin/zerotier-cli ]; then
     echo "Install ZeroTier"
@@ -174,6 +183,19 @@ if [[ $IS_SERVER -eq 1 ]]; then
     done
 
     ZT_SERVER_IP=$IP_ADDR
+
+    # Wait for kubeconfig to appear. We'll need this later.
+    i=0
+    while [ ! -e /etc/rancher/k3s/k3s.yaml ]; do
+        echo "INFO: Waiting for kubeconfig to appear..."
+        sleep 30
+        i=$((i + 1))
+        if [ $i -gt 10 ]; then
+            echo "ERROR: Kubeconfig did not appear. Something went wrong"
+            exit 1
+        fi
+    done
+    echo "INFO: Found kubeconfig. Carrying on."
 fi
 
 echo "INFO: Adding k3-agent.service to systemd"
