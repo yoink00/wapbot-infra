@@ -8,3 +8,4 @@ terraform.plan
 *.backup
 *.new
 id_rsa*
+kubeconfig

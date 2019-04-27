@@ -6,7 +6,7 @@ platform:
   arch: amd64
 
 steps:
-- name: build
+- name: apply-terraform
   image: hashicorp/terraform:light
   environment:
     PASSPHRASE:
