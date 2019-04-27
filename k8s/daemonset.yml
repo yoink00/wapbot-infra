@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: nginxinbound
+  labels:
+    app: nginxinbound
+spec:
+  selector:
+    matchLabels:
+      app: nginxinbound
+  template:
+    metadata:
+      labels:
+        app: nginxinbound
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:alpine
+        ports:
+        - containerPort: 80
+        resources:
+          limits:
+            memory: 200Mi
+          requests:
+            cpu: 100m
+            memory: 200Mi
+        volumeMounts:
+        - name: nginxinbound-config
+          mountPath: /etc/nginx/nginx.conf
+          subPath: nginx.conf
+        - name: nginxinbound-confd
+          mountPath: /etc/nginx/conf.d
+      volumes:
+      - name: nginxinbound-config
+        configMap:
+          name: nginxinbound-config
+      - name: nginxinbound-confd
+        configMap:
+          name: nginxinbound-confd
+      terminationGracePeriodSeconds: 30

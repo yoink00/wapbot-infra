@@ -1,0 +1,13 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: nginxinbound
+spec:
+  selector:
+    app: nginxinbound
+  ports:
+  - protocol: TCP
+    targetPort: 80
+    port: 80
+  type: LoadBalancer
+
